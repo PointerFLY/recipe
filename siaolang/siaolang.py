@@ -1,6 +1,3 @@
-import base64
-
-
 def text2siao(text: str):
     hex = text.encode('utf-8').hex()
     hex_bytes = bytes(hex, encoding='ascii')
@@ -78,6 +75,6 @@ def siao2text(siao_text: str):
             c = n_siao - 10 + ord('a')
         else:
             c = n_siao + ord('0')
-        original_chars.append(c)
+        original_chars.append(chr(c))
 
-    return bytes.fromhex(bytes(original_chars).decode('ascii')).decode('utf-8')
+    return bytes.fromhex(''.join(original_chars)).decode('utf-8')
