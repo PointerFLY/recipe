@@ -15,14 +15,14 @@ class PersistentLRUCache:
         if not self.dic:
             return None
         oldest = next(iter(self.dic))
-        self.put(oldest)
+        self.put(oldest, self.dic[oldest])
         return oldest
 
     def random(self) -> str | None:
         if not self.dic:
             return None
         word = random.choice(list(self.dic.keys()))
-        self.put(word)
+        self.put(word, self.dic[word])
         return word
 
     def get(self, key):
@@ -30,10 +30,10 @@ class PersistentLRUCache:
             return self.dic[key]
         return None
 
-    def put(self, value):
-        if value in self.dic:
-            self.dic.pop(value)
-        self.dic[value] = value
+    def put(self, word, memory):
+        if word in self.dic:
+            self.dic.pop(word)
+        self.dic[word] = memory
         self.save_cache()
 
     def list(self):
@@ -53,11 +53,16 @@ class PersistentLRUCache:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     set_parser = subparsers.add_parser("set")
     set_parser.add_argument("word", type=str)
-    set_parser.add_argument("memory", type=str, default="")
+    set_parser.add_argument(
+        "memory",
+        type=str,
+        nargs="?",
+        default="",
+    )
 
     get_parser = subparsers.add_parser("get")
     get_parser.add_argument("word", type=str)
@@ -65,7 +70,6 @@ if __name__ == "__main__":
     list_parser = subparsers.add_parser("list")
 
     rcmd_parser = subparsers.add_parser("rcmd")
-    rcmd_parser.add_argument("word", type=str)
 
     rand_parser = subparsers.add_parser("rand")
 
@@ -82,11 +86,12 @@ if __name__ == "__main__":
     match args.command:
         case "rcmd":
             safe_print_word(cache.recommend())
-        case "rcmd":
-            safe_print_word(cache.recommend())
         case "rand":
             safe_print_word(cache.random())
         case "set":
-            cache.put(args.word)
+            cache.put(args.word, args.memory)
         case "get":
             safe_print_word(args.word)
+        case "list":
+            for word in cache.list():
+                print(f"{word}: {cache.get(word)}")
