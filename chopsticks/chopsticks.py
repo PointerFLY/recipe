@@ -1,15 +1,27 @@
 """Rules and state helpers for the Chopsticks hand game.
 
-Player hands and player order are interchangeable, so states are normalized
-before they are returned. This keeps the state space small for later search.
+Uses UC Berkeley GamesCrafters' base rules:
+https://gamescrafters.berkeley.edu/games.php?game=chopsticks
+
+Each player's hands are interchangeable and normalized before being returned.
+Player order stays meaningful. This keeps the state space small for later search.
 """
 
-from typing import Literal
+import argparse
+from collections import defaultdict, deque
+from functools import lru_cache
+import re
+from typing import Literal, NamedTuple
 
 Hand = tuple[int, int]
-Player = tuple[Hand, Hand]
-State = tuple[Player, Player]
+State = tuple[Hand, Hand]
 Action = tuple[str, int, int] | tuple[str, int]
+OutcomeStatus = Literal["win", "draw", "loss"]
+
+
+class Outcome(NamedTuple):
+    status: OutcomeStatus
+    depth: int | None = None
 
 
 def normalize_hand(hand: Hand) -> Hand:
@@ -44,25 +56,12 @@ def _player_after_action(player: Hand, opponent: Hand, action: Action):
         updated[target] = 0 if value >= 5 else value
         return player, normalize_hand(tuple(updated))
 
-    if kind == "self_attack":
-        _, attacker, target = action
-        if attacker == target or player[attacker] == 0 or player[target] == 0:
-            raise ValueError("Self-attacks require two distinct live hands")
-        updated = list(player)
-        value = updated[attacker] + updated[target]
-        updated[target] = 0 if value >= 5 else value
-        return normalize_hand(tuple(updated)), opponent
-
     if kind == "split":
         _, left = action
         total = sum(player)
-        if 1 in player:
-            raise ValueError("Cannot split when a hand contains exactly 1 finger")
-        if not 0 <= left <= min(4, total):
-            raise ValueError("Split must keep each hand between 0 and 4")
         right = total - left
-        if right > 4:
-            raise ValueError("Split must keep each hand between 0 and 4")
+        if not (1 <= left <= 4 and 1 <= right <= 4):
+            raise ValueError("Split must keep each hand between 1 and 4")
         return normalize_hand((left, right)), opponent
 
     raise ValueError(f"Unknown action: {kind}")
@@ -71,33 +70,29 @@ def _player_after_action(player: Hand, opponent: Hand, action: Action):
 def legal_actions(state: State, player: int = 0) -> list[Action]:
     """List distinct legal actions for player 0 or 1.
 
-    Split redistributes a player's whole finger total, reviving dead hands as
-    needed. A split is allowed only when neither hand has exactly one finger.
+    Finished games have no legal actions for either player.
+    Split preserves a player's total and leaves both hands between 1 and 4,
+    reviving a dead hand if needed. Unchanged or swapped pairs are not moves.
     """
     state = normalize_state(state)
     if player not in (0, 1):
         raise ValueError("player must be 0 or 1")
+    if winner(state) is not None:
+        return []
     own, other = state[player], state[1 - player]
     actions: list[Action] = []
 
     for attacker, count in enumerate(own):
-        if count == 0:
+        if count == 0 or (attacker > 0 and count == own[attacker - 1]):
             continue
         for target, target_count in enumerate(other):
-            if target_count:
+            if target_count and not (target > 0 and target_count == other[target - 1]):
                 actions.append(("attack", attacker, target))
-        for target, target_count in enumerate(own):
-            if attacker != target and target_count:
-                actions.append(("self_attack", attacker, target))
 
-    if 1 not in own:
-        total = sum(own)
-        for left in range(max(0, total - 4), min(4, total) + 1):
-            candidate = normalize_hand((left, total - left))
-            if candidate != own:
-                action = ("split", candidate[0])
-                if action not in actions:
-                    actions.append(action)
+    total = sum(own)
+    for left in range(max(1, total - 4), min(4, total // 2) + 1):
+        if (left, total - left) != own:
+            actions.append(("split", left))
     return actions
 
 
@@ -132,7 +127,7 @@ def main() -> None:
     player = 0
     print("Chopsticks! Enter the number of a legal action, or q to quit.")
 
-    while winner(state) is None:
+    while (winning_player := winner(state)) is None:
         print(f"\nPlayer 1: {state[0]}    Player 2: {state[1]}")
         actions = legal_actions(state, player)
         print(f"Player {player + 1}'s turn:")
@@ -142,12 +137,6 @@ def main() -> None:
                 description = (
                     f"attack with hand {attacker + 1} "
                     f"on opponent hand {target + 1}"
-                )
-            elif action[0] == "self_attack":
-                _, attacker, target = action
-                description = (
-                    f"attack with hand {attacker + 1} "
-                    f"on your hand {target + 1}"
                 )
             else:
                 _, first_hand = action
@@ -170,7 +159,7 @@ def main() -> None:
         state = apply_action(state, actions[selected - 1], player)
         player = 1 - player
 
-    print(f"\nPlayer {player + 1} wins!")
+    print(f"\nPlayer {winning_player + 1} wins!")
 
 
 if __name__ == "__main__":
