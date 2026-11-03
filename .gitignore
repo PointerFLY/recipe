@@ -1,1 +1,35 @@
 .idea/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Packaging and build output
+build/
+dist/
+*.egg-info/
+.Python
+
+# Test and type-checker caches
+.pytest_cache/
+.mypy_cache/
+. Ruff_cache/
+.tox/
+.nox/
+htmlcov/
+coverage.xml
+.coverage
+
+# Local environment and editor files
+.DS_Store
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
