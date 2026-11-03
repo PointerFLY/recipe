@@ -14,11 +14,18 @@ Action = tuple[str, int, int] | tuple[str, int]
 
 def normalize_hand(hand: Hand) -> Hand:
     """Sort a player's hands so (1, 2) and (2, 1) are identical."""
+    if len(hand) != 2 or any(
+        not isinstance(count, int) or isinstance(count, bool) or not 0 <= count <= 4
+        for count in hand
+    ):
+        raise ValueError("A hand must contain exactly two finger counts from 0 to 4")
     return tuple(sorted(hand))  # type: ignore[return-value]
 
 
 def normalize_state(state: State) -> State:
     """Normalize both hands within each player; player order stays meaningful."""
+    if len(state) != 2:
+        raise ValueError("A state must contain exactly two players")
     return (normalize_hand(state[0]), normalize_hand(state[1]))
 
 
@@ -36,6 +43,15 @@ def _player_after_action(player: Hand, opponent: Hand, action: Action):
         value = player[attacker] + updated[target]
         updated[target] = 0 if value >= 5 else value
         return player, normalize_hand(tuple(updated))
+
+    if kind == "self_attack":
+        _, attacker, target = action
+        if attacker == target or player[attacker] == 0 or player[target] == 0:
+            raise ValueError("Self-attacks require two distinct live hands")
+        updated = list(player)
+        value = updated[attacker] + updated[target]
+        updated[target] = 0 if value >= 5 else value
+        return normalize_hand(tuple(updated)), opponent
 
     if kind == "split":
         _, left = action
@@ -58,6 +74,7 @@ def legal_actions(state: State, player: int = 0) -> list[Action]:
     Split redistributes a player's whole finger total, reviving dead hands as
     needed. A split is allowed only when neither hand has exactly one finger.
     """
+    state = normalize_state(state)
     if player not in (0, 1):
         raise ValueError("player must be 0 or 1")
     own, other = state[player], state[1 - player]
@@ -69,6 +86,9 @@ def legal_actions(state: State, player: int = 0) -> list[Action]:
         for target, target_count in enumerate(other):
             if target_count:
                 actions.append(("attack", attacker, target))
+        for target, target_count in enumerate(own):
+            if attacker != target and target_count:
+                actions.append(("self_attack", attacker, target))
 
     if 1 not in own:
         total = sum(own)
@@ -122,6 +142,12 @@ def main() -> None:
                 description = (
                     f"attack with hand {attacker + 1} "
                     f"on opponent hand {target + 1}"
+                )
+            elif action[0] == "self_attack":
+                _, attacker, target = action
+                description = (
+                    f"attack with hand {attacker + 1} "
+                    f"on your hand {target + 1}"
                 )
             else:
                 _, first_hand = action
