@@ -70,18 +70,25 @@ def next_states(state):
     return sorted({result for action, result in legal_moves(state)})
 
 
-def main():
-    """Play a two-player game in the terminal."""
+def main(computer=None, human_player=1):
+    """Play locally, optionally using a state -> action function for the computer."""
+    if human_player not in (1, 2):
+        raise ValueError("human_player must be 1 or 2")
     state = INITIAL_STATE
     player = 1
     print("Chopsticks")
     print("Choose a move number, or q to quit.")
     print("Hands are (H1, H2), sorted by finger count each turn.")
+    if computer is not None:
+        print(f"You are Player {human_player}; the computer is Player {3 - human_player}.")
 
     while (0, 0) not in state:
-        print(f"\nPlayer {player}'s turn")
-        print(f"You (P{player}): {state[0]}    Opponent (P{3 - player}): {state[1]}")
-        print(f"\n  {'#':>2}  {'Action':<41}  {'You after':<10}  {'Opponent after'}")
+        computer_turn = computer is not None and player != human_player
+        actor = "AI" if computer_turn else "You"
+        opponent = "You" if computer_turn else "AI" if computer is not None else "Opponent"
+        print(f"\nPlayer {player}'s turn" + (" (computer)" if computer_turn else ""))
+        print(f"{actor} (P{player}): {state[0]}    {opponent} (P{3 - player}): {state[1]}")
+        print(f"\n  {'#':>2}  {'Action':<41}  {actor + ' after':<10}  {opponent + ' after'}")
         print("  " + "-" * 73)
         choices = legal_moves(state)
         for index, (action, (other, own)) in enumerate(choices, start=1):
@@ -98,23 +105,31 @@ def main():
             description = f"{source:<21} -> {destination:<16}"
             print(f"  {index:>2}  {description}  {str(own):<10}  {other}")
 
-        choice = input("\nYour move: ").strip().lower()
-        if choice in {"q", "quit", "exit"}:
-            print("Game ended.")
-            return
-        try:
-            selected = int(choice)
-            if not 1 <= selected <= len(choices):
-                raise ValueError
-        except ValueError:
-            print("Enter one of the listed action numbers, or q to quit.")
-            continue
+        if computer_turn:
+            action = computer(state)
+            selected = next(i for i, (a, result) in enumerate(choices, 1) if a == action)
+            print(f"\nComputer chooses move {selected}.")
+        else:
+            choice = input("\nYour move: ").strip().lower()
+            if choice in {"q", "quit", "exit"}:
+                print("Game ended.")
+                return
+            try:
+                selected = int(choice)
+                if not 1 <= selected <= len(choices):
+                    raise ValueError
+            except ValueError:
+                print("Enter one of the listed action numbers, or q to quit.")
+                continue
 
         action, state = choices[selected - 1]
         player = 3 - player
 
     winning_player = 3 - player if state[0] == (0, 0) else player
-    print(f"\nPlayer {winning_player} wins!")
+    if computer is not None:
+        print("\nYou win!" if winning_player == human_player else "\nComputer wins!")
+    else:
+        print(f"\nPlayer {winning_player} wins!")
 
 
 if __name__ == "__main__":
