@@ -1,165 +1,97 @@
-"""Rules and state helpers for the Chopsticks hand game.
+"""Chopsticks rules:
 
-Uses UC Berkeley GamesCrafters' base rules:
-https://gamescrafters.berkeley.edu/games.php?game=chopsticks
+1. Two players start with one finger on each of their two hands.
+2. Players alternate turns, making one attack or split per turn.
+3. Attack with a live hand by adding its count to an opponent's live hand
+   or your own other live hand. The attacking hand stays unchanged.
+4. A hand reaching 5 or more fingers becomes dead (0); there is no rollover.
+   Dead hands cannot attack or be attacked.
+5. Split only when you have one dead hand and one live hand with 2–4 fingers.
+   Redistribute the total so both hands are alive: 2 becomes (1, 1),
+   3 becomes (1, 2), and 4 becomes (1, 3) or (2, 2).
+6. Left and right hands are interchangeable; swapped pairs are the same.
+7. A player loses when both hands are dead. No further moves are allowed.
+8. There is no automatic draw or repetition limit; play may continue forever.
 
-Each player's hands are interchangeable and normalized before being returned.
-Player order stays meaningful. This keeps the state space small for later search.
+A state is (current player's hands, opponent's hands), with each pair sorted.
+next_states(state) returns distinct legal results with the next player first.
 """
 
-import argparse
-from collections import defaultdict, deque
-from functools import lru_cache
-import re
-from typing import Literal, NamedTuple
-
-Hand = tuple[int, int]
-State = tuple[Hand, Hand]
-Action = tuple[str, int, int] | tuple[str, int]
-OutcomeStatus = Literal["win", "draw", "loss"]
+INITIAL_STATE = ((1, 1), (1, 1))
 
 
-class Outcome(NamedTuple):
-    status: OutcomeStatus
-    depth: int | None = None
-
-
-def normalize_hand(hand: Hand) -> Hand:
-    """Sort a player's hands so (1, 2) and (2, 1) are identical."""
-    if len(hand) != 2 or any(
-        not isinstance(count, int) or isinstance(count, bool) or not 0 <= count <= 4
-        for count in hand
-    ):
-        raise ValueError("A hand must contain exactly two finger counts from 0 to 4")
-    return tuple(sorted(hand))  # type: ignore[return-value]
-
-
-def normalize_state(state: State) -> State:
-    """Normalize both hands within each player; player order stays meaningful."""
+def normalize_state(state):
+    """Validate finger counts and sort each player's hands."""
     if len(state) != 2:
         raise ValueError("A state must contain exactly two players")
-    return (normalize_hand(state[0]), normalize_hand(state[1]))
+    for hand in state:
+        if len(hand) != 2 or any(
+            type(count) is not int or not 0 <= count <= 4 for count in hand
+        ):
+            raise ValueError("Each player needs two finger counts from 0 to 4")
+    return tuple(tuple(sorted(hand)) for hand in state)
 
 
-def initial_state() -> State:
-    return ((1, 1), (1, 1))
-
-
-def _player_after_action(player: Hand, opponent: Hand, action: Action):
-    kind = action[0]
-    if kind == "attack":
-        _, attacker, target = action
-        if player[attacker] == 0 or opponent[target] == 0:
-            raise ValueError("Attacks require a live attacking hand and target")
-        updated = list(opponent)
-        value = player[attacker] + updated[target]
-        updated[target] = 0 if value >= 5 else value
-        return player, normalize_hand(tuple(updated))
-
-    if kind == "split":
-        _, left = action
-        total = sum(player)
-        right = total - left
-        if not (1 <= left <= 4 and 1 <= right <= 4):
-            raise ValueError("Split must keep each hand between 1 and 4")
-        return normalize_hand((left, right)), opponent
-
-    raise ValueError(f"Unknown action: {kind}")
-
-
-def legal_actions(state: State, player: int = 0) -> list[Action]:
-    """List distinct legal actions for player 0 or 1.
-
-    Finished games have no legal actions for either player.
-    Split preserves a player's total and leaves both hands between 1 and 4,
-    reviving a dead hand if needed. Unchanged or swapped pairs are not moves.
-    """
-    state = normalize_state(state)
-    if player not in (0, 1):
-        raise ValueError("player must be 0 or 1")
-    if winner(state) is not None:
+def next_states(state):
+    """Return distinct legal results, each with the next player first."""
+    own, other = normalize_state(state)
+    if (0, 0) in (own, other):
         return []
-    own, other = state[player], state[1 - player]
-    actions: list[Action] = []
+    results = set()
 
     for attacker, count in enumerate(own):
-        if count == 0 or (attacker > 0 and count == own[attacker - 1]):
+        if count == 0:
             continue
-        for target, target_count in enumerate(other):
-            if target_count and not (target > 0 and target_count == other[target - 1]):
-                actions.append(("attack", attacker, target))
+        # Attack an opponent's live hand.
+        for target, value in enumerate(other):
+            if value:
+                updated = list(other)
+                updated[target] = count + value if count + value < 5 else 0
+                results.add((tuple(sorted(updated)), own))
+        # Attack your other live hand.
+        target = 1 - attacker
+        if own[target]:
+            updated = list(own)
+            total = count + own[target]
+            updated[target] = total if total < 5 else 0
+            results.add((other, tuple(sorted(updated))))
 
-    total = sum(own)
-    for left in range(max(1, total - 4), min(4, total // 2) + 1):
-        if (left, total - left) != own:
-            actions.append(("split", left))
-    return actions
-
-
-def apply_action(state: State, action: Action, player: int = 0) -> State:
-    """Apply a legal action and return the normalized next state."""
-    state = normalize_state(state)
-    if player not in (0, 1):
-        raise ValueError("player must be 0 or 1")
-    if action not in legal_actions(state, player):
-        raise ValueError(f"Illegal action: {action}")
-
-    result = list(state)
-    result[player], result[1 - player] = _player_after_action(
-        state[player], state[1 - player], action
-    )
-    return (result[0], result[1])
+    if own[0] == 0 and own[1] > 1:
+        for left in range(1, own[1] // 2 + 1):
+            results.add((other, (left, own[1] - left)))
+    return sorted(results)
 
 
-def winner(state: State) -> Literal[0, 1] | None:
-    """Return the winning player index, or None while both players are alive."""
-    state = normalize_state(state)
-    if state[0] == (0, 0):
-        return 1
-    if state[1] == (0, 0):
-        return 0
-    return None
+def main():
+    """Play a two-player game in the terminal."""
+    state = INITIAL_STATE
+    player = 1
+    print("Chopsticks! Choose a resulting position, or q to quit.")
 
+    while (0, 0) not in state:
+        print(f"\nPlayer {player}: {state[0]}    Player {3 - player}: {state[1]}")
+        print(f"Player {player}'s turn:")
+        choices = next_states(state)
+        for index, (other, own) in enumerate(choices, start=1):
+            print(f"  {index}. You: {own}    Opponent: {other}")
 
-def main() -> None:
-    """Play a two-player local game in the terminal."""
-    state = initial_state()
-    player = 0
-    print("Chopsticks! Enter the number of a legal action, or q to quit.")
-
-    while (winning_player := winner(state)) is None:
-        print(f"\nPlayer 1: {state[0]}    Player 2: {state[1]}")
-        actions = legal_actions(state, player)
-        print(f"Player {player + 1}'s turn:")
-        for index, action in enumerate(actions, start=1):
-            if action[0] == "attack":
-                _, attacker, target = action
-                description = (
-                    f"attack with hand {attacker + 1} "
-                    f"on opponent hand {target + 1}"
-                )
-            else:
-                _, first_hand = action
-                total = sum(state[player])
-                description = f"split to ({first_hand}, {total - first_hand})"
-            print(f"  {index}. {description}")
-
-        choice = input("Choose action: ").strip().lower()
+        choice = input("Choose position: ").strip().lower()
         if choice in {"q", "quit", "exit"}:
             print("Game ended.")
             return
         try:
             selected = int(choice)
-            if not 1 <= selected <= len(actions):
+            if not 1 <= selected <= len(choices):
                 raise ValueError
         except ValueError:
-            print("Enter one of the listed action numbers, or q to quit.")
+            print("Enter one of the listed position numbers, or q to quit.")
             continue
 
-        state = apply_action(state, actions[selected - 1], player)
-        player = 1 - player
+        state = choices[selected - 1]
+        player = 3 - player
 
-    print(f"\nPlayer {winning_player + 1} wins!")
+    winning_player = 3 - player if state[0] == (0, 0) else player
+    print(f"\nPlayer {winning_player} wins!")
 
 
 if __name__ == "__main__":
