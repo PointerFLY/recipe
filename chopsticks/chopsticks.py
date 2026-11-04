@@ -14,6 +14,9 @@
 8. There is no automatic draw or repetition limit; play may continue forever.
 
 A state is (current player's hands, opponent's hands), with each pair sorted.
+legal_moves(state) returns (action, next_state) pairs. Attack actions contain
+the attacking and target hand indices (0 or 1); split actions contain the
+smaller resulting count. Indices refer to the sorted hands before the move.
 next_states(state) returns distinct legal results with the next player first.
 """
 
@@ -32,50 +35,70 @@ def normalize_state(state):
     return tuple(tuple(sorted(hand)) for hand in state)
 
 
-def next_states(state):
-    """Return distinct legal results, each with the next player first."""
+def legal_moves(state):
+    """Return (action, next_state) pairs, with the next player first."""
     own, other = normalize_state(state)
     if (0, 0) in (own, other):
         return []
-    results = set()
+    moves = []
 
     for attacker, count in enumerate(own):
-        if count == 0:
+        if count == 0 or (attacker == 1 and count == own[0]):
             continue
         # Attack an opponent's live hand.
         for target, value in enumerate(other):
-            if value:
+            if value and not (target == 1 and value == other[0]):
                 updated = list(other)
                 updated[target] = count + value if count + value < 5 else 0
-                results.add((tuple(sorted(updated)), own))
+                moves.append((("attack", attacker, target), (tuple(sorted(updated)), own)))
         # Attack your other live hand.
         target = 1 - attacker
         if own[target]:
             updated = list(own)
             total = count + own[target]
             updated[target] = total if total < 5 else 0
-            results.add((other, tuple(sorted(updated))))
+            moves.append((("self_attack", attacker, target), (other, tuple(sorted(updated)))))
 
     if own[0] == 0 and own[1] > 1:
         for left in range(1, own[1] // 2 + 1):
-            results.add((other, (left, own[1] - left)))
-    return sorted(results)
+            moves.append((("split", left), (other, (left, own[1] - left))))
+    return sorted(moves, key=lambda move: move[0])
+
+
+def next_states(state):
+    """Return distinct legal results, each with the next player first."""
+    return sorted({result for action, result in legal_moves(state)})
 
 
 def main():
     """Play a two-player game in the terminal."""
     state = INITIAL_STATE
     player = 1
-    print("Chopsticks! Choose a resulting position, or q to quit.")
+    print("Chopsticks")
+    print("Choose a move number, or q to quit.")
+    print("Hands are (H1, H2), sorted by finger count each turn.")
 
     while (0, 0) not in state:
-        print(f"\nPlayer {player}: {state[0]}    Player {3 - player}: {state[1]}")
-        print(f"Player {player}'s turn:")
-        choices = next_states(state)
-        for index, (other, own) in enumerate(choices, start=1):
-            print(f"  {index}. You: {own}    Opponent: {other}")
+        print(f"\nPlayer {player}'s turn")
+        print(f"You (P{player}): {state[0]}    Opponent (P{3 - player}): {state[1]}")
+        print(f"\n  {'#':>2}  {'Action':<41}  {'You after':<10}  {'Opponent after'}")
+        print("  " + "-" * 73)
+        choices = legal_moves(state)
+        for index, (action, (other, own)) in enumerate(choices, start=1):
+            if action[0] == "split":
+                source = f"Split {state[0]}"
+                destination = str(own)
+            else:
+                kind, attacker, target = action
+                label = "Attack" if kind == "attack" else "Self-attack"
+                destination = f"opponent H{target + 1}" if kind == "attack" else f"H{target + 1}"
+                target_count = state[1][target] if kind == "attack" else state[0][target]
+                source = f"{label} H{attacker + 1} ({state[0][attacker]})"
+                destination = f"{destination} ({target_count})"
+            description = f"{source:<21} -> {destination:<16}"
+            print(f"  {index:>2}  {description}  {str(own):<10}  {other}")
 
-        choice = input("Choose position: ").strip().lower()
+        choice = input("\nYour move: ").strip().lower()
         if choice in {"q", "quit", "exit"}:
             print("Game ended.")
             return
@@ -84,10 +107,10 @@ def main():
             if not 1 <= selected <= len(choices):
                 raise ValueError
         except ValueError:
-            print("Enter one of the listed position numbers, or q to quit.")
+            print("Enter one of the listed action numbers, or q to quit.")
             continue
 
-        state = choices[selected - 1]
+        action, state = choices[selected - 1]
         player = 3 - player
 
     winning_player = 3 - player if state[0] == (0, 0) else player
