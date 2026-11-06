@@ -1,2 +1,0 @@
-# Only needed to minimize policy size; the game and complete solver use stdlib.
-scipy>=1.16,<2

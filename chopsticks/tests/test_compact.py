@@ -1,14 +1,13 @@
 """Verify minimum size and closure under every opponent continuation."""
 
-import csv
 from importlib.util import find_spec
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from chopsticks import INITIAL_STATE, legal_moves
-from compact import minimize_policy, policy_coverage, write_policy
-from solve import solve
+from chopsticks.chopsticks import INITIAL_STATE, legal_moves
+from chopsticks.solve import minimize_policy, policy_coverage, write_tables
+from chopsticks.solve import action_label, solve
 
 
 @unittest.skipUnless(find_spec("scipy"), "Policy minimization requires SciPy")
@@ -62,18 +61,22 @@ class CompactPolicyTests(unittest.TestCase):
 
     def test_exports_match_the_selected_policy(self):
         with TemporaryDirectory() as directory:
-            write_policy(self.policy, self.strategy, self.certificate, directory)
-            with (Path(directory) / "compact-strategy.csv").open(newline="") as source:
-                rows = list(csv.DictReader(source))
-            states = {
-                ((int(r["your_h1"]), int(r["your_h2"])),
-                 (int(r["opponent_h1"]), int(r["opponent_h2"]))) for r in rows
-            }
-            self.assertEqual(len(rows), 45)
-            self.assertEqual(states, set(self.policy))
-            text = (Path(directory) / "compact-strategy.md").read_text()
+            write_tables(self.strategy, directory, self.policy, self.certificate)
+            text = (Path(directory) / "strategy.md").read_text()
             self.assertIn("global lower bound: **45**", text)
-            self.assertEqual(sum(line.startswith("| `") for line in text.splitlines()), 45)
+            full, compact = text.split("## Minimum-size optimal policy", 1)
+            self.assertEqual(sum(line.startswith("| `") for line in full.splitlines()), 192)
+            rows = [line for line in compact.splitlines() if line.startswith("| `")]
+            self.assertEqual(len(rows), 45)
+            coverage = policy_coverage(self.policy, self.strategy)
+            for line, (state, action) in zip(rows, sorted(self.policy.items())):
+                row = self.strategy[state]
+                cells = [cell.strip() for cell in line.split("|")[1:-1]]
+                self.assertEqual(cells[:3], [f"`{state[0]}`", f"`{state[1]}`", row["outcome"]])
+                self.assertEqual(cells[3], str(row["plies"]) if row["plies"] is not None else "—")
+                self.assertEqual(cells[4], action_label(state, action))
+                self.assertEqual(cells[5], "; ".join(seat for seat, states in coverage.items() if state in states))
+            self.assertEqual({p.name for p in Path(directory).iterdir()}, {"strategy.md"})
 
     def test_terminal_start_needs_no_entries(self):
         start = ((0, 0), (1, 1))

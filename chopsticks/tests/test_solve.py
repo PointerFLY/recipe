@@ -1,13 +1,12 @@
 """Checks for the complete perfect-play strategy and exported tables."""
 
 from copy import deepcopy
-import csv
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from chopsticks import INITIAL_STATE, legal_moves
-from solve import reachable_graph, solve, verify, write_tables
+from chopsticks.chopsticks import INITIAL_STATE, legal_moves
+from chopsticks.solve import reachable_graph, solve, verify, write_tables
 
 
 class StrategyTests(unittest.TestCase):
@@ -97,30 +96,17 @@ class StrategyTests(unittest.TestCase):
     def test_exports_preserve_all_records(self):
         with TemporaryDirectory() as directory:
             write_tables(self.strategy, directory)
-            with (Path(directory) / "strategy.csv").open(newline="", encoding="utf-8") as source:
-                records = list(csv.DictReader(source))
-            self.assertEqual(len(records), 192)
-            states = set()
-            for row in records:
-                state = ((int(row["your_h1"]), int(row["your_h2"])),
-                         (int(row["opponent_h1"]), int(row["opponent_h2"])))
-                states.add(state)
-                expected = self.strategy[state]
-                self.assertEqual(row["outcome"], expected["outcome"])
-                plies = int(row["plies"]) if row["plies"] else None
-                self.assertEqual(plies, expected["plies"])
-                labels = row["all_optimal_actions"].split("; ") if row["all_optimal_actions"] else []
-                self.assertEqual(len(labels), len(expected["actions"]))
-                self.assertEqual(row["best_action"], labels[0] if labels else "")
-                if state == INITIAL_STATE:
-                    self.assertEqual(labels, ["attack H1 -> opponent H1", "self-attack H1 -> H2"])
-                if state == ((0, 4), (3, 4)):
-                    self.assertIn("split -> (1, 3)", labels)
-                    self.assertIn("split -> (2, 2)", labels)
-            self.assertEqual(states, set(self.strategy))
             self.assertFalse((Path(directory) / "strategy.json").exists())
             markdown = (Path(directory) / "strategy.md").read_text()
-            self.assertEqual(sum(line.startswith("| `") for line in markdown.splitlines()), 192)
+            rows = [line for line in markdown.splitlines() if line.startswith("| `")]
+            self.assertEqual(len(rows), 192)
+            for line, (state, row) in zip(rows, self.strategy.items()):
+                cells = [cell.strip() for cell in line.split("|")[1:-1]]
+                self.assertEqual(cells[:3], [f"`{state[0]}`", f"`{state[1]}`", row["outcome"]])
+                self.assertEqual(cells[3], str(row["plies"]) if row["plies"] is not None else "—")
+                self.assertEqual(cells[4], f"`{row['actions'][0]}`" if row["actions"] else "—")
+                self.assertEqual(cells[5], "; ".join(f"`{a}`" for a in row["actions"]) or "—")
+            self.assertEqual({p.name for p in Path(directory).iterdir()}, {"strategy.md"})
 
 
 if __name__ == "__main__":

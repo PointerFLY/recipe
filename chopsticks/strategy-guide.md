@@ -51,16 +51,15 @@ When losing, prefer the longest distance; when drawing, preserve the draw.
 The opening `((1,1),(1,1))` is a draw with perfect play. Both the opening
 opponent attack and the opening self-attack preserve that draw.
 
-Use the full [CSV table](strategy.csv) or [Markdown table](strategy.md) for
+Use the full [Markdown table](strategy.md) for
 exact move choices, including all equally optimal actions and distances.
-For fewer entries to remember, the [45-entry policy](compact-strategy.csv)
+For fewer entries to remember, the [45-entry policy](strategy.md#minimum-size-optimal-policy)
 chooses between equally optimal actions to minimize the number of decision
 states. It covers both starting seats and every legal opponent response,
 provided you consistently follow its selected actions. See the
-[minimum-size verification](compact-strategy.md) for its scope and proof.
+[minimum-size verification](strategy.md#minimum-size-optimal-policy) for its scope and proof.
 One ply is one player's move. Regenerate the tables after changing the rules:
 
 ```sh
-python3 chopsticks/solve.py
-python3 chopsticks/compact.py
+uv run python chopsticks/solve.py
 ```

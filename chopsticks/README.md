@@ -5,8 +5,8 @@ move first, with each player's two hands sorted. Every move swaps the players.
 
 For a human-oriented summary, see [the compact strategy guide](strategy-guide.md).
 
-For a smaller exact lookup table, use the [45-entry policy](compact-strategy.csv)
-and its [minimum-size explanation](compact-strategy.md). It selects one optimal
+For a smaller exact lookup table, use the [45-entry policy](strategy.md#minimum-size-optimal-policy)
+and its [minimum-size explanation](strategy.md#minimum-size-optimal-policy). It selects one optimal
 action per decision state, covers either starting seat, and handles every legal
 opponent response. Follow the selected actions consistently; your own deviations
 can lead outside the compact table.
@@ -14,40 +14,47 @@ can lead outside the compact table.
 Play locally:
 
 ```sh
-python3 chopsticks/chopsticks.py
+uv run python chopsticks/chopsticks.py
 ```
 
 Play against an optimal computer (you move first by default):
 
 ```sh
-python3 chopsticks/play_ai.py
-python3 chopsticks/play_ai.py --player 2
+uv run python chopsticks/play_ai.py
+uv run python chopsticks/play_ai.py --player 2
+uv run python chopsticks/play_ai.py --suboptimal-percent 20
 ```
+
+`--suboptimal-percent` accepts 0–100 (including decimals) and defaults to 0.
+On each AI turn, this is the chance of choosing a random legal move outside
+the solver's optimal choices. If every legal move is optimal, the AI keeps its
+usual optimal choice. A suboptimal move can also mean a slower win or a faster
+loss, rather than a different outcome.
 
 The computer solves the full reachable graph once at startup and chooses one
 equally optimal action on each turn. It forces the fastest win when possible,
 preserves draws, and delays unavoidable losses. The same aligned move display
 shows what the computer chose. This mode needs only Python's standard library,
-with no CSV files or SciPy dependency. Perfect play can repeat indefinitely;
+with no saved tables or SciPy dependency. Perfect play can repeat indefinitely;
 enter `q` on your turn to quit. The original two-human mode is unchanged.
 
-Generate and verify the complete strategy, then write `strategy.csv` and
+Generate and verify the complete strategy and minimum-size policy together in
 `strategy.md` alongside the solver:
 
 ```sh
-python3 chopsticks/solve.py
+uv sync
+uv run python chopsticks/solve.py
 ```
 
-Minimize the policy by choosing between equally optimal actions:
+Only policy minimization needs SciPy. To write `strategy.md` with only the
+complete strategy using Python's standard library:
 
 ```sh
-python3 -m pip install -r chopsticks/requirements.txt
-python3 chopsticks/compact.py
+uv run python chopsticks/solve.py --full-only
 ```
 
-Only the minimizer needs SciPy; playing the game, generating the complete
-strategy, and using the saved tables do not. The minimizer writes
-`compact-strategy.csv` and `compact-strategy.md`.
+Dependencies are managed for the whole repository in the root `pyproject.toml`
+and `uv.lock`. Playing the game and using the saved tables do not need SciPy.
 
 The arbitrary first-action policy requires 109 decision entries across the two
 starting seats. Binary optimization reduces this to **45**, with a matching
@@ -97,12 +104,11 @@ Action indices are zero-based and refer to the sorted hands before the move:
 - `("self_attack", source, target)`: attack your other live hand.
 - `("split", smaller_count)`: revive your dead hand by splitting.
 
-The CSV has separate numeric columns for your H1/H2 and the opponent's H1/H2,
-followed by outcome, plies, one deterministic best action, and all optimal
-actions separated by semicolons. Actions use readable, one-based H1/H2 labels
-matching the CLI, such as `attack H1 -> opponent H2` or `split -> (1, 3)`.
-Draws have a blank plies cell; terminal losses have zero plies and blank actions.
-The Python and Markdown action tuples above use zero-based indices.
+The Markdown table lists your hands, the opponent's hands, outcome, plies,
+one deterministic best action, and all equally optimal actions. Action tuples
+use zero-based indices. Draws show a dash for plies; terminal states have zero
+plies and no actions. The compact table uses readable, one-based H1/H2 labels
+matching the CLI.
 Distinct actions that reach the same position remain separate actions; the
 solver counts distinct child positions when propagating losses.
 
@@ -115,5 +121,5 @@ analyze a different start.
 Run all checks:
 
 ```sh
-python3 -m unittest discover -s chopsticks -v
+uv run python -m unittest discover -s chopsticks/tests -v
 ```

@@ -1,4 +1,4 @@
-"""Run with: python3 -m unittest discover -s chopsticks -v"""
+"""Run with: uv run python -m unittest discover -s chopsticks/tests -v"""
 
 from contextlib import redirect_stdout
 from io import StringIO
@@ -6,7 +6,7 @@ from itertools import combinations_with_replacement, product
 import unittest
 from unittest.mock import patch
 
-from chopsticks import INITIAL_STATE, legal_moves, main, next_states, normalize_state
+from chopsticks.chopsticks import INITIAL_STATE, legal_moves, main, next_states, normalize_state
 
 
 class ChopsticksRulesTests(unittest.TestCase):
@@ -109,7 +109,7 @@ class ChopsticksRulesTests(unittest.TestCase):
                 inputs = [str(selected), '1']
                 expected_winner = 2
             output = StringIO()
-            with patch('chopsticks.INITIAL_STATE', state):
+            with patch('chopsticks.chopsticks.INITIAL_STATE', state):
                 with patch('builtins.input', side_effect=['bad', '0', '999'] + inputs):
                     with redirect_stdout(output):
                         main()
@@ -130,7 +130,7 @@ class ChopsticksRulesTests(unittest.TestCase):
         ]:
             with self.subTest(state=state):
                 output = StringIO()
-                with patch('chopsticks.INITIAL_STATE', state):
+                with patch('chopsticks.chopsticks.INITIAL_STATE', state):
                     with patch('builtins.input', return_value='q'), redirect_stdout(output):
                         main()
                 for description in descriptions:
