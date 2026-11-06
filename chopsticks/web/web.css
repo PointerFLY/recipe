@@ -4,6 +4,11 @@ button { cursor: pointer; border: 0; border-radius: 10px; padding: 10px 14px; ba
 button:disabled { cursor: default; }
 button:focus-visible, input:focus-visible { outline: 3px solid #e59b37; outline-offset: 3px; }
 .header-actions { display: flex; }
+.buddy-first-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.buddy-first-toggle input { appearance: none; width: 34px; height: 20px; margin: 0; border-radius: 20px; background: #a6b9b0; cursor: pointer; transition: background .15s; }
+.buddy-first-toggle input::before { content: ''; display: block; width: 16px; height: 16px; margin: 2px; border-radius: 50%; background: white; transition: transform .15s; }
+.buddy-first-toggle input:checked { background: var(--green); }
+.buddy-first-toggle input:checked::before { transform: translateX(14px); }
 .hand-card { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-family: inherit; }
 .hand-card:disabled { opacity: 1; }
 .hand-card:disabled:hover { transform: none; }

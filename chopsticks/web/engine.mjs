@@ -64,12 +64,28 @@ export function chooseAction(hands, player, strategy, percent = 0, random = Math
 }
 
 export function createGame(strategy, changed, schedule = setTimeout, cancel = clearTimeout) {
-  const session = {hands: [[1, 1], [1, 1]], selected: null, busy: false, percent: 0, log: []};
-  let pending = null;
+  const session = {hands: [[1, 1], [1, 1]], selected: null, busy: false, percent: 0, log: [], buddyFirst: false, humanPlayer: 1};
+  let pending = null, epoch = 0;
+  function buddyTurn(percent) {
+    const currentEpoch = epoch;
+    pending = schedule(() => {
+      if (currentEpoch !== epoch) return;
+      pending = null;
+      const reply = makeMove(session.hands, 1, chooseAction(session.hands, 1, strategy, percent), strategy);
+      session.hands = reply.hands;
+      session.log.push(reply.message);
+      session.busy = false;
+      changed();
+    }, 850);
+  }
   function restart() {
+    if (!validPercent(session.percent)) throw new Error('Choose a suboptimal percentage from 0 to 100 first.');
+    epoch++;
     if (pending !== null) cancel(pending);
     pending = null;
-    Object.assign(session, {hands: [[1, 1], [1, 1]], selected: null, busy: false, log: []});
+    Object.assign(session, {hands: [[1, 1], [1, 1]], selected: null, busy: session.buddyFirst, log: [],
+      humanPlayer: session.buddyFirst ? 2 : 1});
+    if (session.busy) buddyTurn(session.percent);
     changed();
   }
   function play(action) {
@@ -81,14 +97,7 @@ export function createGame(strategy, changed, schedule = setTimeout, cancel = cl
     session.log.push(move.message);
     session.selected = null;
     session.busy = winner(session.hands) === null;
-    if (session.busy) pending = schedule(() => {
-      pending = null;
-      const reply = makeMove(session.hands, 1, chooseAction(session.hands, 1, strategy, percent), strategy);
-      session.hands = reply.hands;
-      session.log.push(reply.message);
-      session.busy = false;
-      changed();
-    }, 850);
+    if (session.busy) buddyTurn(percent);
     changed();
   }
   function click(side, index) {

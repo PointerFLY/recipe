@@ -30,6 +30,9 @@ exports the Python solver's complete strategy and legal transitions to JSON;
 the browser keeps hand positions stable and plays without a Python server.
 The hand images, delayed AI turn, split actions, rules, restart, and suboptimal
 percentage control are shared in behavior with the local NiceGUI version.
+The **Buddy first** toggle beside **New game** chooses who opens the next round:
+on for Buddy, off for you (the default). Changing it takes effect when you press
+**New game**; it stays selected between rounds.
 
 ### GitHub Pages
 

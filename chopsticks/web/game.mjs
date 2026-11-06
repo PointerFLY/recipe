@@ -39,6 +39,8 @@ function render() {
   const focused = document.activeElement?.id;
   const {session} = game;
   const result = winner(session.hands);
+  $('buddy-role').textContent = `PLAYER ${3 - session.humanPlayer} · YOUR CHALLENGER`;
+  $('your-role').textContent = `PLAYER ${session.humanPlayer} · YOU`;
   $('buddy-hands').replaceChildren(handCard(1, 0), handCard(1, 1));
   $('your-hands').replaceChildren(handCard(0, 0), handCard(0, 1));
   $('buddy-status').textContent = session.busy ? 'Thinking…' : result === null ? 'Ready to play' : 'Round complete';
@@ -79,6 +81,9 @@ $('percent').addEventListener('input', event => {
   event.target.setAttribute('aria-invalid', String(!valid));
   $('percent-error').textContent = valid ? '' : 'Use a percentage from 0 to 100.';
 });
+$('buddy-first').addEventListener('change', event => {
+  if (game) game.session.buddyFirst = event.target.checked;
+});
 $('restart').addEventListener('click', () => act(() => game.restart()));
 
 async function start() {
@@ -88,6 +93,7 @@ async function start() {
     strategy = await response.json();
     if (strategy.version !== 1 || !strategy.states?.['1111']?.moves.length) throw new Error('Invalid game strategy');
     game = createGame(strategy, render);
+    game.session.buddyFirst = $('buddy-first').checked;
     game.session.percent = $('percent').value === '' ? NaN : $('percent').valueAsNumber;
     $('restart').disabled = false;
     render();
