@@ -2,12 +2,12 @@ name: Deploy Chopsticks to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'chopsticks/**'
       - '.github/workflows/pages.yml'
   pull_request:
-    branches: [master]
+    branches: [main]
     paths:
       - 'chopsticks/**'
       - '.github/workflows/pages.yml'
@@ -40,7 +40,7 @@ jobs:
           path: build/pages
 
   deploy:
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:

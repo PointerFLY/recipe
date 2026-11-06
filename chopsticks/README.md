@@ -38,15 +38,15 @@ on for Buddy, off for you (the default). Changing it takes effect when you press
 
 The intended public URL is <https://pointerfly.github.io/recipe/chopsticks/>.
 The `.github/workflows/pages.yml` workflow tests and builds the static site,
-then publishes `build/pages` on pushes affecting Chopsticks on `master`.
-Pull requests to `master` run the same checks without publishing. Generated
+then publishes `build/pages` on pushes affecting Chopsticks on `main`.
+Pull requests to `main` run the same checks without publishing. Generated
 files stay in the ignored `build/` directory; do not commit them.
 
-After committing and pushing these changes to `master` (or merging them from
+After committing and pushing these changes to `main` (or merging them from
 a development branch), select **Settings → Pages → Build and deployment →
 Source → GitHub Actions** in the repository. If the initial run happened before
 Pages was enabled, use **Actions → Deploy Chopsticks to GitHub Pages → Run
-workflow**, choosing `master`. The workflow's deployment link points to the
+workflow**, choosing `main`. The workflow's deployment link points to the
 game's `/chopsticks/` path. All asset URLs are relative to support `/recipe/`.
 
 To verify the browser adapter against every reachable physical board, plus
