@@ -1,0 +1,24 @@
+/* Native HTML equivalents of the layout supplied by NiceGUI/Quasar locally. */
+button, input { font: inherit; }
+button { cursor: pointer; border: 0; border-radius: 10px; padding: 10px 14px; background: transparent; color: inherit; }
+button:disabled { cursor: default; }
+button:focus-visible, input:focus-visible { outline: 3px solid #e59b37; outline-offset: 3px; }
+.header-actions { display: flex; }
+.hand-card { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-family: inherit; }
+.hand-card:disabled { opacity: 1; }
+.hand-card:disabled:hover { transform: none; }
+.hand-tag { display: block; }
+.hand-count { padding-top: 5px; }
+.split-row:empty { display: none; }
+.split-button { background: var(--green); color: white; }
+.percent-field { display: flex; align-items: center; gap: 8px; margin-top: 8px; border: 1px solid #c4d4c9; border-radius: 13px; padding: 10px 12px; }
+.percent-field input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--ink); }
+.settings-panel label { font-size: 13px; }
+.error { color: #a33125; font-size: 12px; }
+.error:empty { display: none; }
+.rules-card { color: var(--ink); border: 1px solid #d7e6db; background: #fffef9; }
+.rules-card::backdrop { background: #173b3870; }
+.rules-card ol { padding-left: 22px; }
+.rules-card li { margin-bottom: 12px; }
+#moves { font-size: 12px; color: #61766b; line-height: 1.7; }
+@media (max-width: 520px) { .help-button { font-size: 11px; padding: 8px; } .brand-mark { display: none; } }

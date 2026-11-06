@@ -17,7 +17,43 @@ Play locally:
 uv run python chopsticks/chopsticks.py
 ```
 
-Play the NiceGUI browser game:
+Play the static browser game (the GitHub Pages version):
+
+```sh
+python3 -m chopsticks.export_web
+python3 -m http.server 8000 --directory build/pages
+```
+
+Open <http://localhost:8000/chopsticks/>. This version needs only Python's
+standard library to build and a browser with JavaScript to play. The build
+exports the Python solver's complete strategy and legal transitions to JSON;
+the browser keeps hand positions stable and plays without a Python server.
+The hand images, delayed AI turn, split actions, rules, restart, and suboptimal
+percentage control are shared in behavior with the local NiceGUI version.
+
+### GitHub Pages
+
+The intended public URL is <https://pointerfly.github.io/recipe/chopsticks/>.
+The `.github/workflows/pages.yml` workflow tests and builds the static site,
+then publishes `build/pages` on pushes affecting Chopsticks on `master`.
+Pull requests to `master` run the same checks without publishing. Generated
+files stay in the ignored `build/` directory; do not commit them.
+
+After committing and pushing these changes to `master` (or merging them from
+a development branch), select **Settings → Pages → Build and deployment →
+Source → GitHub Actions** in the repository. If the initial run happened before
+Pages was enabled, use **Actions → Deploy Chopsticks to GitHub Pages → Run
+workflow**, choosing `master`. The workflow's deployment link points to the
+game's `/chopsticks/` path. All asset URLs are relative to support `/recipe/`.
+
+To verify the browser adapter against every reachable physical board, plus
+AI difficulty and restart behavior (requires Node.js):
+
+```sh
+python3 -m unittest chopsticks.tests.test_web_game -v
+```
+
+Play the NiceGUI browser game locally:
 
 ```sh
 uv sync

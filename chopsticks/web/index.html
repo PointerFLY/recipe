@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#19796b">
+  <meta name="description" content="Play Chopsticks against Buddy. A little thinking goes a long way.">
+  <title>Chopsticks Club</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E✋%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./assets/game.css">
+  <link rel="stylesheet" href="./web.css">
+  <script type="module" src="./game.mjs"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✋</span><div class="brand-copy">
+        <div class="brand-name">Chopsticks Club</div><div class="brand-tagline">A LITTLE THINKING GOES A LONG WAY</div>
+      </div></div>
+      <div class="header-actions"><button class="help-button" id="help">How to play</button><button class="new-game-button" id="restart" disabled>↻ New game</button></div>
+    </header>
+    <main class="workspace">
+      <section class="play-board" aria-label="Chopsticks game">
+        <div class="player-heading"><div class="player-identity"><span class="buddy-avatar" aria-hidden="true">🤖</span><div class="identity-copy"><div class="eyebrow">YOUR CHALLENGER</div><div class="player-name">Buddy</div></div></div><div class="player-status" id="buddy-status">Getting ready</div></div>
+        <div class="hands-row buddy-hands" id="buddy-hands"></div>
+        <div class="turn-card" id="turn-card"><span class="turn-icon" id="turn-icon" aria-hidden="true">☝</span><div class="turn-copy" role="status" aria-live="polite"><div class="turn-title" id="turn-title">Loading Buddy…</div><div class="turn-subtitle" id="turn-subtitle">Getting ready for your first tap.</div></div></div>
+        <div class="hands-row your-hands" id="your-hands"></div>
+        <div class="your-heading"><div class="eyebrow">YOU</div><div class="your-caption">Little hands. Clever moves.</div></div>
+        <div class="split-row" id="splits"></div>
+      </section>
+      <aside class="sidebar">
+        <section class="welcome-panel"><div class="eyebrow">LET'S PLAY &amp; LEARN</div><div class="welcome-title">A little tap.<br>A bright idea.</div><div class="welcome-copy">Add fingers, spot a clever move, and give Buddy a challenge.</div><div class="mini-lesson"><div class="lesson-equation">2 + 3 = 5</div>Five or more? Time for that hand to rest.</div></section>
+        <section class="settings-panel"><label for="percent">Suboptimal percentage</label><div class="percent-field"><input id="percent" type="number" min="0" max="100" step="any" value="0" aria-describedby="percent-error"><span>%</span></div><div id="percent-error" class="error" aria-live="polite"></div></section>
+        <section class="recent-moves"><div class="eyebrow">THE LAST TAPS</div><div id="moves" role="log" aria-live="polite">Your story starts with a tap.</div></section>
+      </aside>
+    </main>
+    <p id="notice" class="error" role="alert"></p>
+    <footer class="site-footer">☀ No timer. Take your time. Every tap is a chance to learn.</footer>
+  </div>
+  <dialog id="rules" class="rules-card" aria-labelledby="rules-title"><h2 id="rules-title" class="panel-title">A tiny game of big ideas</h2><ol><li>Pick your hand, then tap Buddy's hand or your other hand.</li><li>Add the fingers together. At 5 or more, the tapped hand rests.</li><li>One resting hand? Split 2, 3 or 4 fingers to wake it up.</li><li>Get both of Buddy's hands resting to win!</li></ol><p>Perfect play can repeat indefinitely.</p><form method="dialog"><button class="new-game-button">Let's play</button></form></dialog>
+  <noscript><p>Please enable JavaScript to play Chopsticks.</p></noscript>
+</body>
+</html>
