@@ -105,53 +105,79 @@ def winner(hands):
 def game_page():
     # Each browser page has its own board and AI setting.
     session = {"hands": ((1, 1), (1, 1)), "selected": None, "busy": False,
-               "percent": AI_SUBOPTIMAL_PERCENT, "epoch": 0, "log": [], "turns": 0}
+               "percent": AI_SUBOPTIMAL_PERCENT, "epoch": 0, "log": [], "turns": 0,
+               "started": False, "human_player": None}
     css_version = (ASSETS / "game.css").stat().st_mtime_ns
     ui.add_head_html(f'<link rel="stylesheet" href="/chopsticks-assets/game.css?v={css_version}">')
     ui.colors(primary="#19796b", secondary="#ed9c45", accent="#ed9c45")
 
     def restart():
         session.update(hands=((1, 1), (1, 1)), selected=None, busy=False,
-                       epoch=session["epoch"] + 1, log=[], turns=0)
+                       epoch=session["epoch"] + 1, log=[], turns=0, started=False)
         board.refresh()
         recent_moves.refresh()
 
-    async def play(action):
-        if session["busy"] or winner(session["hands"]) is not None:
+    def select_player(player):
+        if session["started"]:
             return
-        percent = session["percent"]
-        if not valid_suboptimal_percent(percent):
-            ui.notify("Choose a suboptimal percentage from 0 to 100 first.", type="warning")
-            return
-        try:
-            hands, message = make_move(session["hands"], 0, action)
-        except ValueError:
-            ui.notify("Try a glowing hand, or pick your hand again to cancel.")
-            return
-        epoch = session["epoch"]
-        session.update(hands=hands, selected=None, busy=True, turns=session["turns"] + 1)
-        session["log"].append(message)
+        session["human_player"] = player
         board.refresh()
-        recent_moves.refresh()
+
+    def valid_percentage():
+        if valid_suboptimal_percent(session["percent"]):
+            return True
+        ui.notify("Choose a suboptimal percentage from 0 to 100 first.", type="warning")
+        return False
+
+    async def buddy_turn(epoch, percent):
         try:
-            if winner(hands) is None:
-                await asyncio.sleep(0.85)
-                if epoch != session["epoch"]:
-                    return  # A new game cancels the pending computer turn.
-                state = canonical_state(hands, 1)
-                action = choose_action(state, STRATEGY, percent)
-                action = physical_action(hands, 1, action)
-                hands, message = make_move(hands, 1, action)
-                session["hands"] = hands
-                session["log"].append(message)
+            await asyncio.sleep(0.85)
+            if epoch != session["epoch"] or not session["started"]:
+                return  # Returning to setup cancels the pending computer turn.
+            hands = session["hands"]
+            state = canonical_state(hands, 1)
+            action = choose_action(state, STRATEGY, percent)
+            action = physical_action(hands, 1, action)
+            hands, message = make_move(hands, 1, action)
+            session["hands"] = hands
+            session["log"].append(message)
         finally:
             if epoch == session["epoch"]:
                 session["busy"] = False
                 board.refresh()
                 recent_moves.refresh()
 
+    async def start_game():
+        if session["started"] or session["human_player"] is None or not valid_percentage():
+            return
+        buddy_first = session["human_player"] == 2
+        session.update(started=True, busy=buddy_first)
+        board.refresh()
+        recent_moves.refresh()
+        if buddy_first:
+            await buddy_turn(session["epoch"], session["percent"])
+
+    async def play(action):
+        if not session["started"] or session["busy"] or winner(session["hands"]) is not None:
+            return
+        if not valid_percentage():
+            return
+        percent = session["percent"]
+        try:
+            hands, message = make_move(session["hands"], 0, action)
+        except ValueError:
+            ui.notify("Try a glowing hand, or pick your hand again to cancel.")
+            return
+        session.update(hands=hands, selected=None, busy=winner(hands) is None,
+                       turns=session["turns"] + 1)
+        session["log"].append(message)
+        board.refresh()
+        recent_moves.refresh()
+        if session["busy"]:
+            await buddy_turn(session["epoch"], percent)
+
     async def hand_clicked(side, index):
-        if session["busy"] or winner(session["hands"]) is not None:
+        if not session["started"] or session["busy"] or winner(session["hands"]) is not None:
             return
         selected = session["selected"]
         if selected is None:
@@ -202,13 +228,36 @@ def game_page():
 
     @ui.refreshable
     def board():
+        if not session["started"]:
+            with ui.element("section").classes("setup-panel").props('aria-labelledby="setup-title"'):
+                ui.label("BEFORE THE FIRST TAP").classes("eyebrow")
+                ui.label("Who goes first?").classes("setup-title").props('id="setup-title"')
+                ui.label("Choose your player. Player 1 always makes the first move.").classes("setup-copy")
+                with ui.element("div").classes("seat-options").props('role="group" aria-label="Choose your player"'):
+                    for player, title, detail, icon in (
+                        (1, "You go first", "Make the opening tap. Buddy follows.", "touch_app"),
+                        (2, "Buddy goes first", "Watch Buddy open, then take your turn.", "smart_toy"),
+                    ):
+                        picked = session["human_player"] == player
+                        with ui.button(on_click=lambda e, player=player: select_player(player), color=None).props(
+                            f'flat no-caps aria-pressed="{str(picked).lower()}"'
+                        ).classes("seat-option" + (" picked" if picked else "")).mark(f"player-{player}"):
+                            ui.icon("check_circle" if picked else icon).classes("seat-icon")
+                            ui.label(f"PLAYER {player}").classes("eyebrow")
+                            ui.label(title).classes("seat-title")
+                            ui.label(detail).classes("seat-detail")
+                ui.label("Your hands stay at the bottom, whichever player you choose.").classes("setup-copy")
+                ui.button("Start game", icon="arrow_forward", on_click=start_game).props("no-caps unelevated").classes(
+                    "start-game-button"
+                ).set_enabled(session["human_player"] is not None)
+            return
         result = winner(session["hands"])
         with ui.element("section").classes("play-board"):
             with ui.element("div").classes("player-heading"):
                 with ui.element("div").classes("player-identity"):
                     ui.icon("smart_toy").classes("buddy-avatar")
                     with ui.column().classes("identity-copy"):
-                        ui.label("YOUR CHALLENGER").classes("eyebrow")
+                        ui.label(f"PLAYER {3 - session['human_player']} · YOUR CHALLENGER").classes("eyebrow")
                         ui.label("Buddy").classes("player-name")
                 ui.label("Thinking…" if session["busy"] and result is None else "Ready to play").classes("player-status")
             with ui.element("div").classes("hands-row buddy-hands"):
@@ -227,7 +276,7 @@ def game_page():
                 hand_card(0, 0)
                 hand_card(0, 1)
             with ui.element("div").classes("your-heading"):
-                ui.label("YOU").classes("eyebrow")
+                ui.label(f"PLAYER {session['human_player']} · YOU").classes("eyebrow")
                 ui.label("Little hands. Clever moves.").classes("your-caption")
             if result is None and not session["busy"] and 0 in session["hands"][0] and sum(session["hands"][0]) > 1:
                 with ui.element("div").classes("split-row"):
@@ -243,7 +292,7 @@ def game_page():
         with ui.element("div").classes("recent-moves"):
             ui.label("THE LAST TAPS").classes("eyebrow")
             if not session["log"]:
-                ui.label("Your story starts with a tap.").classes("muted")
+                ui.label("Your story starts with a tap." if session["started"] else "Choose your player, then start your story.").classes("muted")
             for message in session["log"][-2:]:
                 ui.label(message).classes("move-message")
 

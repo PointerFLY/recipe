@@ -25,7 +25,12 @@ uv run python chopsticks/run_ui.py
 uv run python chopsticks/run_ui.py --suboptimal-percent 20
 ```
 
-The app opens at `http://127.0.0.1:8080`. Pick one of your hand pictures, then
+The app opens at `http://127.0.0.1:8080` with a player selection screen. Choose
+**Player 1 — You go first** or **Player 2 — Buddy goes first**, then press
+**Start game**. Player 1 always opens; your hands stay at the bottom in either
+seat. Buddy pauses to think before its opening move when you choose Player 2.
+
+Pick one of your hand pictures, then
 tap a highlighted target: Buddy's hand or your other hand. Split buttons appear
 when one hand rests and the other has 2–4 fingers. Hands keep their physical
 screen positions while the adapter translates to the solver's sorted indices.
@@ -37,9 +42,10 @@ The card contains only the percentage input. Use `--suboptimal-percent 20`
 to change its initial value. Each browser page has its own setting. A turn
 uses the percentage selected when the human makes that move.
 
-New game resets the board and keeps the selected percentage. Restarting also
-cancels a pending AI reply. Each browser page has its own game; refreshing the
-page starts over. Perfect play can repeat indefinitely.
+New game returns to player selection and resets the board, keeping the previous
+seat selected and the AI percentage. Press Start game to begin the next round.
+Restarting also cancels a pending AI reply, including Buddy's opening move.
+Each browser page has its own game; refreshing the page starts over. Perfect play can repeat indefinitely.
 
 Use `--port 8081` for another port or `--no-show` to skip automatically opening
 the browser. The default binds only to your computer. To play from another

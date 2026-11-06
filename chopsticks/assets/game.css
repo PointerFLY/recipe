@@ -14,6 +14,20 @@ body { margin: 0; color: var(--ink); background: #f8f6f0; font-family: ui-rounde
 .help-button { color: #47645c; font-weight: 700; }
 .new-game-button { background: var(--green) !important; color: white !important; border-radius: 14px; padding: 10px 18px; font-weight: 750; }
 .workspace { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 340px); gap: clamp(20px, 2.5vw, 36px); align-items: start; }
+.setup-panel { background: #e9f3eb; border: 1px solid #d7e6db; border-radius: 30px; padding: clamp(24px, 4vw, 48px); }
+.setup-title { font-size: clamp(28px, 4vw, 42px); font-weight: 850; letter-spacing: -1px; margin: 12px 0; }
+.setup-copy { color: #61766b; font-size: 14px; line-height: 1.65; }
+.seat-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 28px 0 20px; }
+.seat-option { width: 100%; padding: 24px 18px !important; border: 2px solid #c9ded1; border-radius: 20px; background: #fffef8 !important; color: var(--ink) !important; text-align: left; }
+.seat-option .q-btn__content { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.seat-option:hover { border-color: var(--green); }
+.seat-option.picked { border-color: var(--green); background: #d4eee2 !important; }
+.seat-option:focus-visible, .start-game-button:focus-visible { outline: 3px solid #e59b37; outline-offset: 4px; }
+.seat-icon { font-size: 30px; color: var(--green); margin-bottom: 6px; }
+.seat-title { font-size: 19px; font-weight: 800; }
+.seat-detail { font-size: 13px; line-height: 1.6; color: #61766b; }
+.start-game-button { margin-top: 24px; padding: 12px 24px; border-radius: 14px; font-weight: 750; }
+@media (max-width: 520px) { .seat-options { grid-template-columns: 1fr; gap: 12px; } .seat-option { padding: 18px !important; } .start-game-button { width: 100%; } }
 .play-board { container-type: inline-size; position: relative; background: #e9f3eb; border: 1px solid #d7e6db; border-radius: 30px; padding: 22px 32px 18px; overflow: hidden; }
 .play-board::before { content: ''; position: absolute; width: 280px; height: 280px; border: 1px solid #d8e7dc; border-radius: 50%; left: -210px; top: 160px; pointer-events: none; }
 .player-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
