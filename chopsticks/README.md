@@ -17,6 +17,41 @@ Play locally:
 uv run python chopsticks/chopsticks.py
 ```
 
+Play the NiceGUI browser game:
+
+```sh
+uv sync
+uv run python chopsticks/run_ui.py
+uv run python chopsticks/run_ui.py --suboptimal-percent 20
+```
+
+The app opens at `http://127.0.0.1:8080`. Pick one of your hand pictures, then
+tap a highlighted target: Buddy's hand or your other hand. Split buttons appear
+when one hand rests and the other has 2–4 fingers. Hands keep their physical
+screen positions while the adapter translates to the solver's sorted indices.
+
+The on-screen **Suboptimal percentage** defaults to **0%** (optimal play).
+Set 0–100 to choose the chance of a random nonoptimal AI move, using the same
+behavior as `play_ai.py`. If every legal move is optimal, Buddy plays optimally.
+The card contains only the percentage input. Use `--suboptimal-percent 20`
+to change its initial value. Each browser page has its own setting. A turn
+uses the percentage selected when the human makes that move.
+
+New game resets the board and keeps the selected percentage. Restarting also
+cancels a pending AI reply. Each browser page has its own game; refreshing the
+page starts over. Perfect play can repeat indefinitely.
+
+Use `--port 8081` for another port or `--no-show` to skip automatically opening
+the browser. The default binds only to your computer. To play from another
+device on your network, start with `--host 0.0.0.0` and use your computer's LAN
+address. This small version includes playing, splitting, restart, and rules;
+there are no accounts or saved games.
+
+Photographic-style hand images were generated for this project; their brief
+and finger-count ordering are documented in [assets/README.md](assets/README.md).
+The automated checks include exhaustive rules-adapter tests and NiceGUI's Python
+user simulation for selection, taps, AI replies, CLI settings, and restart.
+
 Play against an optimal computer (you move first by default):
 
 ```sh

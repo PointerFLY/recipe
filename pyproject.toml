@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "matplotlib>=3.10,<4",
+    "nicegui>=3,<4",
     "numpy>=2,<3",
     "opencv-python>=4.11,<5",
     "scipy>=1.16,<2",
