@@ -106,22 +106,22 @@ def game_page():
     # Each browser page has its own board and AI setting.
     session = {"hands": ((1, 1), (1, 1)), "selected": None, "busy": False,
                "percent": AI_SUBOPTIMAL_PERCENT, "epoch": 0, "log": [], "turns": 0,
-               "started": False, "human_player": None}
+               "buddy_first": False, "human_player": 1}
     css_version = (ASSETS / "game.css").stat().st_mtime_ns
     ui.add_head_html(f'<link rel="stylesheet" href="/chopsticks-assets/game.css?v={css_version}">')
     ui.colors(primary="#19796b", secondary="#ed9c45", accent="#ed9c45")
 
-    def restart():
-        session.update(hands=((1, 1), (1, 1)), selected=None, busy=False,
-                       epoch=session["epoch"] + 1, log=[], turns=0, started=False)
+    async def restart():
+        if not valid_percentage():
+            return
+        buddy_first = session["buddy_first"]
+        session.update(hands=((1, 1), (1, 1)), selected=None, busy=buddy_first,
+                       epoch=session["epoch"] + 1, log=[], turns=0,
+                       human_player=2 if buddy_first else 1)
         board.refresh()
         recent_moves.refresh()
-
-    def select_player(player):
-        if session["started"]:
-            return
-        session["human_player"] = player
-        board.refresh()
+        if buddy_first:
+            await buddy_turn(session["epoch"], session["percent"])
 
     def valid_percentage():
         if valid_suboptimal_percent(session["percent"]):
@@ -132,8 +132,8 @@ def game_page():
     async def buddy_turn(epoch, percent):
         try:
             await asyncio.sleep(0.85)
-            if epoch != session["epoch"] or not session["started"]:
-                return  # Returning to setup cancels the pending computer turn.
+            if epoch != session["epoch"]:
+                return  # Starting a new game cancels the pending computer turn.
             hands = session["hands"]
             state = canonical_state(hands, 1)
             action = choose_action(state, STRATEGY, percent)
@@ -147,18 +147,8 @@ def game_page():
                 board.refresh()
                 recent_moves.refresh()
 
-    async def start_game():
-        if session["started"] or session["human_player"] is None or not valid_percentage():
-            return
-        buddy_first = session["human_player"] == 2
-        session.update(started=True, busy=buddy_first)
-        board.refresh()
-        recent_moves.refresh()
-        if buddy_first:
-            await buddy_turn(session["epoch"], session["percent"])
-
     async def play(action):
-        if not session["started"] or session["busy"] or winner(session["hands"]) is not None:
+        if session["busy"] or winner(session["hands"]) is not None:
             return
         if not valid_percentage():
             return
@@ -177,7 +167,7 @@ def game_page():
             await buddy_turn(session["epoch"], percent)
 
     async def hand_clicked(side, index):
-        if not session["started"] or session["busy"] or winner(session["hands"]) is not None:
+        if session["busy"] or winner(session["hands"]) is not None:
             return
         selected = session["selected"]
         if selected is None:
@@ -228,29 +218,6 @@ def game_page():
 
     @ui.refreshable
     def board():
-        if not session["started"]:
-            with ui.element("section").classes("setup-panel").props('aria-labelledby="setup-title"'):
-                ui.label("BEFORE THE FIRST TAP").classes("eyebrow")
-                ui.label("Who goes first?").classes("setup-title").props('id="setup-title"')
-                ui.label("Choose your player. Player 1 always makes the first move.").classes("setup-copy")
-                with ui.element("div").classes("seat-options").props('role="group" aria-label="Choose your player"'):
-                    for player, title, detail, icon in (
-                        (1, "You go first", "Make the opening tap. Buddy follows.", "touch_app"),
-                        (2, "Buddy goes first", "Watch Buddy open, then take your turn.", "smart_toy"),
-                    ):
-                        picked = session["human_player"] == player
-                        with ui.button(on_click=lambda e, player=player: select_player(player), color=None).props(
-                            f'flat no-caps aria-pressed="{str(picked).lower()}"'
-                        ).classes("seat-option" + (" picked" if picked else "")).mark(f"player-{player}"):
-                            ui.icon("check_circle" if picked else icon).classes("seat-icon")
-                            ui.label(f"PLAYER {player}").classes("eyebrow")
-                            ui.label(title).classes("seat-title")
-                            ui.label(detail).classes("seat-detail")
-                ui.label("Your hands stay at the bottom, whichever player you choose.").classes("setup-copy")
-                ui.button("Start game", icon="arrow_forward", on_click=start_game).props("no-caps unelevated").classes(
-                    "start-game-button"
-                ).set_enabled(session["human_player"] is not None)
-            return
         result = winner(session["hands"])
         with ui.element("section").classes("play-board"):
             with ui.element("div").classes("player-heading"):
@@ -292,7 +259,7 @@ def game_page():
         with ui.element("div").classes("recent-moves"):
             ui.label("THE LAST TAPS").classes("eyebrow")
             if not session["log"]:
-                ui.label("Your story starts with a tap." if session["started"] else "Choose your player, then start your story.").classes("muted")
+                ui.label("Your story starts with a tap.").classes("muted")
             for message in session["log"][-2:]:
                 ui.label(message).classes("move-message")
 
@@ -313,6 +280,10 @@ def game_page():
                     ui.label("A LITTLE THINKING GOES A LONG WAY").classes("brand-tagline")
             with ui.row().classes("header-actions"):
                 ui.button("How to play", icon="help_outline", on_click=rules.open).props("flat no-caps").classes("help-button")
+                ui.switch("Buddy first", value=session["buddy_first"],
+                          on_change=lambda e: session.update(buddy_first=e.value)).props(
+                              'dense aria-label="Buddy first"'
+                          ).classes("buddy-first-toggle").mark("buddy-first")
                 ui.button("New game", icon="refresh", on_click=restart).props("no-caps unelevated").classes("new-game-button")
         with ui.element("main").classes("workspace"):
             board()

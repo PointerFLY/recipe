@@ -25,9 +25,10 @@ async def game_user(suboptimal_percent=0):
 
 
 async def start_game(user, player=1):
-    user.find(marker=f"player-{player}").click()
-    await asyncio.sleep(0)  # Allow the selection refresh to enable Start.
-    user.find("Start game").click()
+    toggle = next(iter(user.find(marker="buddy-first").elements))
+    toggle.value = player == 2
+    await asyncio.sleep(0)
+    user.find("New game").click()
     await user.should_see("Buddy is thinking…" if player == 2 else "Your turn, bright spark!")
 
 
@@ -97,18 +98,32 @@ class HandPositionTests(unittest.TestCase):
 
 @unittest.skipUnless(find_spec("nicegui"), "NiceGUI is required for UI checks")
 class BrowserInteractionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_requires_player_selection_before_start(self):
-        from nicegui import ui
-
+    async def test_opens_ready_to_play_with_buddy_first_off(self):
         async with game_user() as user:
             await user.open("/")
-            await user.should_see("Who goes first?")
-            start = next(element for element in user.find(ui.button).elements if element.text == "Start game")
-            self.assertFalse(start.enabled)
-            await user.should_not_see(marker="hand-0-0")
-            await start_game(user)
+            await user.should_see("Your turn, bright spark!")
+            await user.should_see(marker="hand-0-0")
+            await user.should_not_see("Who goes first?")
+            self.assertFalse(next(iter(user.find(marker="buddy-first").elements)).value)
             await user.should_see("PLAYER 1 · YOU")
             await user.should_see("Your story starts with a tap.")
+
+    async def test_toggle_applies_to_next_game_and_persists(self):
+        async with game_user() as user:
+            await user.open("/")
+            toggle = next(iter(user.find(marker="buddy-first").elements))
+            toggle.value = True
+            await asyncio.sleep(0)
+            await user.should_see("PLAYER 1 · YOU")
+            await user.should_see("Your turn, bright spark!")
+            user.find("New game").click()
+            await user.should_see("Buddy is thinking…")
+            await user.should_see("PLAYER 2 · YOU")
+            await asyncio.sleep(1)
+            user.find("New game").click()
+            await user.should_see("Buddy is thinking…")
+            self.assertTrue(toggle.value)
+            await asyncio.sleep(1)
 
     async def test_player_two_gets_exactly_one_buddy_opening(self):
         from chopsticks import run_ui
@@ -131,8 +146,6 @@ class BrowserInteractionTests(unittest.IsolatedAsyncioTestCase):
             await user.open("/")
             with patch.object(run_ui, "choose_action", wraps=run_ui.choose_action) as choose:
                 await start_game(user, player=2)
-                user.find("New game").click()
-                await user.should_see("Who goes first?")
                 await start_game(user, player=1)
                 await asyncio.sleep(1)
                 choose.assert_not_called()
@@ -145,12 +158,12 @@ class BrowserInteractionTests(unittest.IsolatedAsyncioTestCase):
         async with game_user() as user:
             await user.open("/")
             next(iter(user.find(ui.number).elements)).value = None
-            user.find(marker="player-2").click()
+            next(iter(user.find(marker="buddy-first").elements)).value = True
             await asyncio.sleep(0)
-            user.find("Start game").click()
+            user.find("New game").click()
             await user.should_see("Choose a suboptimal percentage from 0 to 100 first.")
-            await user.should_see("Who goes first?")
-            await user.should_not_see(marker="hand-0-0")
+            await user.should_see("Your turn, bright spark!")
+            await user.should_see("PLAYER 1 · YOU")
 
     async def test_select_tap_ai_reply_and_restart(self):
         async with game_user() as user:
@@ -165,8 +178,7 @@ class BrowserInteractionTests(unittest.IsolatedAsyncioTestCase):
             await user.should_see("Your turn, bright spark!")
             await user.should_see("You tapped Buddy: 1 + 1 = 2.")
             user.find("New game").click()
-            await user.should_see("Who goes first?")
-            await start_game(user)
+            await user.should_see("Your turn, bright spark!")
             await user.should_see("Your story starts with a tap.")
 
     async def test_self_tap_targets_the_selected_physical_hand(self):
@@ -190,8 +202,7 @@ class BrowserInteractionTests(unittest.IsolatedAsyncioTestCase):
             await user.should_see("Buddy is thinking…")
             user.find("New game").click()
             await asyncio.sleep(1)
-            await user.should_see("Who goes first?")
-            await start_game(user)
+            await user.should_see("Your turn, bright spark!")
             await user.should_see("Your story starts with a tap.")
             await user.should_see("Your turn, bright spark!")
 
