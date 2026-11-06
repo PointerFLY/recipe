@@ -19,6 +19,32 @@ player's hands are sorted; left and right are interchangeable.
 4. **When defeat is unavoidable, delay it:** choose the move that postpones
    defeat longest against optimal opposition.
 
+## Memory table for the compact policy
+
+**Finish first:** if you can eliminate the opponent's last live hand, do it.
+This covers 10 of the compact policy's 45 entries. For example, with your `24`
+against their `01`, your 4 attacks their 1 and wins immediately.
+
+**Only when you cannot win immediately**, use this table from top to bottom.
+It covers the remaining 35 entries. Here `14` means `(1,4)`, and "Any" means
+any of your hand pairs encountered in that part of the compact policy.
+
+| Opponent's hands | Your hands | Action | Entries |
+|---|---|---|---:|
+| `01` | Any | Dead hand: **split**. Otherwise: **self-attack larger onto smaller**. | 7 |
+| `11` | Any | Dead hand: **split**. Otherwise, total ≤4: **self-attack larger onto smaller**. Total >4: **largest attacks their 1**. | 10 |
+| `14` | `04` | **Split to `22`**. | 1 |
+| `14` | Other | **Kill their 4** with any live hand. | 9 |
+| `13` | `14` | **Your 1 attacks their 3**. | 1 |
+| Other remaining cases | Any | **Largest attacks largest**. | 7 |
+| | | **Total** | **35** |
+
+**Mnemonic:** Ones build · Fourteen loses four · Otherwise big hits big.
+
+With equal hands, either equivalent hand works. These rules apply to positions
+reached while consistently following the compact policy. If you deviate and
+reach a position outside it, consult the full strategy table.
+
 ## The 15 nonterminal losing configurations
 
 | Your hands | Opponent's hands that make your position losing |

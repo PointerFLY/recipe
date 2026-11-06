@@ -3,7 +3,7 @@
 The numbered rules are at the top of `chopsticks.py`. States put the player to
 move first, with each player's two hands sorted. Every move swaps the players.
 
-For a human-oriented summary, see [the compact strategy guide](strategy-guide.md).
+For a human-oriented summary, see [the compact strategy guide](win.md).
 
 For a smaller exact lookup table, use the [45-entry policy](strategy.md#minimum-size-optimal-policy)
 and its [minimum-size explanation](strategy.md#minimum-size-optimal-policy). It selects one optimal
